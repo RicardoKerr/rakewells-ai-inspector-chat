@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, MapPin, Paperclip, Camera, X, Minimize2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -101,6 +102,10 @@ const ChatWidget = () => {
       setIsLoading(true);
       console.log('Sending to webhook:', messageData);
 
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 seconds
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
@@ -112,21 +117,73 @@ const ChatWidget = () => {
           content: messageData.content,
           metadata: messageData.metadata || null
         }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Wait for response (up to 30 seconds as specified)
-      const botResponse = await response.json();
-      console.log('Bot response:', botResponse);
+      // Get response text first to debug
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
 
-      // Process bot response
-      if (Array.isArray(botResponse) && botResponse.length > 0 && botResponse[0].text) {
+      let botResponse;
+      try {
+        botResponse = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      console.log('Parsed bot response:', botResponse);
+      console.log('Response type:', typeof botResponse);
+      console.log('Is array:', Array.isArray(botResponse));
+
+      // Handle different response formats
+      let messageText = '';
+      
+      if (Array.isArray(botResponse)) {
+        console.log('Response is array, length:', botResponse.length);
+        if (botResponse.length > 0) {
+          const firstItem = botResponse[0];
+          console.log('First item:', firstItem);
+          
+          if (firstItem && typeof firstItem === 'object' && firstItem.text) {
+            messageText = firstItem.text;
+            console.log('Found text in first item:', messageText);
+          } else {
+            console.warn('First item does not have text property');
+          }
+        } else {
+          console.warn('Response array is empty');
+        }
+      } else if (botResponse && typeof botResponse === 'object') {
+        // Handle single object response
+        if (botResponse.text) {
+          messageText = botResponse.text;
+          console.log('Found text in object response:', messageText);
+        } else if (botResponse.content) {
+          messageText = botResponse.content;
+          console.log('Found content in object response:', messageText);
+        }
+      } else if (typeof botResponse === 'string') {
+        // Handle plain string response
+        messageText = botResponse;
+        console.log('Response is plain string:', messageText);
+      }
+
+      if (messageText && messageText.trim()) {
+        console.log('Creating bot message with text:', messageText);
+        
         const botMessage: Message = {
           id: `bot-${Date.now()}`,
-          text: botResponse[0].text,
+          text: messageText,
           sender: 'bot',
           timestamp: new Date(),
           type: 'text'
@@ -136,19 +193,49 @@ const ChatWidget = () => {
         
         // Text-to-speech for bot response
         if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(botResponse[0].text);
+          const utterance = new SpeechSynthesisUtterance(messageText);
           utterance.lang = 'pt-BR';
           utterance.rate = 0.9;
           speechSynthesis.speak(utterance);
         }
+      } else {
+        console.error('No valid message text found in response');
+        // Add fallback message
+        const fallbackMessage: Message = {
+          id: `bot-${Date.now()}`,
+          text: 'Desculpe, recebi uma resposta vazia. Tente novamente.',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text'
+        };
+        setMessages(prev => [...prev, fallbackMessage]);
       }
     } catch (error) {
       console.error('Error sending to webhook:', error);
+      
+      let errorMessage = "Não foi possível enviar a mensagem. Tente novamente.";
+      
+      if (error.name === 'AbortError') {
+        errorMessage = "A solicitação expirou. O servidor pode estar sobrecarregado.";
+      } else if (error.message.includes('JSON')) {
+        errorMessage = "Resposta inválida do servidor. Tente novamente.";
+      }
+      
       toast({
         title: "Erro de comunicação",
-        description: "Não foi possível enviar a mensagem. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
+
+      // Add error message to chat
+      const errorChatMessage: Message = {
+        id: `error-${Date.now()}`,
+        text: "❌ " + errorMessage,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
+      };
+      setMessages(prev => [...prev, errorChatMessage]);
     } finally {
       setIsLoading(false);
     }
