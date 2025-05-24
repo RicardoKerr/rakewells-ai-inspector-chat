@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, MapPin, Paperclip, Camera, X, Minimize2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -109,8 +108,9 @@ const ChatWidget = () => {
         },
         body: JSON.stringify({
           sessionId,
-          timestamp: new Date().toISOString(),
-          ...messageData
+          type: messageData.type,
+          content: messageData.content,
+          metadata: messageData.metadata || null
         }),
       });
 
@@ -169,8 +169,8 @@ const ChatWidget = () => {
     
     await sendToWebhook({
       type: 'text',
-      text: inputText,
-      messageType: 'text'
+      content: inputText,
+      metadata: null
     });
 
     setInputText('');
@@ -222,9 +222,8 @@ const ChatWidget = () => {
         
         await sendToWebhook({
           type: 'location',
-          text: 'Usuário compartilhou localização',
-          location: { latitude, longitude },
-          messageType: 'location'
+          content: 'Usuário compartilhou localização',
+          metadata: { latitude, longitude }
         });
       },
       (error) => {
@@ -277,14 +276,13 @@ const ChatWidget = () => {
       
       await sendToWebhook({
         type: type === 'camera' ? 'image' : type,
-        text: `Arquivo enviado: ${file.name}`,
-        fileData: {
+        content: `Arquivo enviado: ${file.name}`,
+        metadata: {
           fileName: file.name,
           fileType: file.type,
           fileSize: file.size,
           base64Data: base64Data.split(',')[1] // Remove data:mime;base64, prefix
-        },
-        messageType: 'file'
+        }
       });
     };
     reader.readAsDataURL(file);
