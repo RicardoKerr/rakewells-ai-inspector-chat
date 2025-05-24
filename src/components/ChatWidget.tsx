@@ -1,46 +1,26 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MicOff, MapPin, Paperclip, Camera, X, Minimize2, MessageCircle } from 'lucide-react';
+import { X, Minimize2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-  type?: 'text' | 'audio' | 'location' | 'file' | 'image';
-  fileData?: {
-    fileName: string;
-    fileType: string;
-    fileSize: number;
-    fileUrl?: string;
-  };
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
-}
+import { Message } from '@/types/chat';
+import { sendToWebhook, WebhookMessageData } from '@/services/webhookService';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { MessageBubble } from '@/components/chat/MessageBubble';
+import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
+import { ChatInput } from '@/components/chat/ChatInput';
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
-  const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
-  
   const { toast } = useToast();
-
-  const WEBHOOK_URL = 'https://n8nwebhook.rakewells.com/webhook/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
+  const { isListening, toggleListening } = useSpeechRecognition();
 
   // Initialize session
   useEffect(() => {
@@ -67,148 +47,27 @@ const ChatWidget = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize speech recognition
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'pt-BR';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputText(transcript);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = () => {
-        setIsListening(false);
-        toast({
-          title: "Erro no reconhecimento de voz",
-          description: "Não foi possível capturar o áudio. Tente novamente.",
-          variant: "destructive",
-        });
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, [toast]);
-
-  const sendToWebhook = async (messageData: any) => {
+  const handleSendToWebhook = async (messageData: WebhookMessageData) => {
     try {
       setIsLoading(true);
-      console.log('Sending to webhook:', messageData);
-
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 seconds
-
-      const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId,
-          type: messageData.type,
-          content: messageData.content,
-          metadata: messageData.metadata || null
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Get response text first to debug
-      const responseText = await response.text();
-      console.log('Raw response text:', responseText);
-
-      let botResponse;
-      try {
-        botResponse = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        throw new Error('Invalid JSON response from server');
-      }
-
-      console.log('Parsed bot response:', botResponse);
-      console.log('Response type:', typeof botResponse);
-      console.log('Is array:', Array.isArray(botResponse));
-
-      // Handle different response formats
-      let messageText = '';
+      const messageText = await sendToWebhook(sessionId, messageData);
       
-      if (Array.isArray(botResponse)) {
-        console.log('Response is array, length:', botResponse.length);
-        if (botResponse.length > 0) {
-          const firstItem = botResponse[0];
-          console.log('First item:', firstItem);
-          
-          if (firstItem && typeof firstItem === 'object' && firstItem.text) {
-            messageText = firstItem.text;
-            console.log('Found text in first item:', messageText);
-          } else {
-            console.warn('First item does not have text property');
-          }
-        } else {
-          console.warn('Response array is empty');
-        }
-      } else if (botResponse && typeof botResponse === 'object') {
-        // Handle single object response
-        if (botResponse.text) {
-          messageText = botResponse.text;
-          console.log('Found text in object response:', messageText);
-        } else if (botResponse.content) {
-          messageText = botResponse.content;
-          console.log('Found content in object response:', messageText);
-        }
-      } else if (typeof botResponse === 'string') {
-        // Handle plain string response
-        messageText = botResponse;
-        console.log('Response is plain string:', messageText);
-      }
-
-      if (messageText && messageText.trim()) {
-        console.log('Creating bot message with text:', messageText);
-        
-        const botMessage: Message = {
-          id: `bot-${Date.now()}`,
-          text: messageText,
-          sender: 'bot',
-          timestamp: new Date(),
-          type: 'text'
-        };
-        
-        setMessages(prev => [...prev, botMessage]);
-        
-        // Text-to-speech for bot response
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(messageText);
-          utterance.lang = 'pt-BR';
-          utterance.rate = 0.9;
-          speechSynthesis.speak(utterance);
-        }
-      } else {
-        console.error('No valid message text found in response');
-        // Add fallback message
-        const fallbackMessage: Message = {
-          id: `bot-${Date.now()}`,
-          text: 'Desculpe, recebi uma resposta vazia. Tente novamente.',
-          sender: 'bot',
-          timestamp: new Date(),
-          type: 'text'
-        };
-        setMessages(prev => [...prev, fallbackMessage]);
+      const botMessage: Message = {
+        id: `bot-${Date.now()}`,
+        text: messageText,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
+      };
+      
+      setMessages(prev => [...prev, botMessage]);
+      
+      // Text-to-speech for bot response
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(messageText);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        speechSynthesis.speak(utterance);
       }
     } catch (error) {
       console.error('Error sending to webhook:', error);
@@ -219,6 +78,8 @@ const ChatWidget = () => {
         errorMessage = "A solicitação expirou. O servidor pode estar sobrecarregado.";
       } else if (error.message.includes('JSON')) {
         errorMessage = "Resposta inválida do servidor. Tente novamente.";
+      } else if (error.message.includes('Empty response')) {
+        errorMessage = "Recebi uma resposta vazia. Tente novamente.";
       }
       
       toast({
@@ -254,7 +115,7 @@ const ChatWidget = () => {
 
     setMessages(prev => [...prev, userMessage]);
     
-    await sendToWebhook({
+    await handleSendToWebhook({
       type: 'text',
       content: inputText,
       metadata: null
@@ -263,23 +124,10 @@ const ChatWidget = () => {
     setInputText('');
   };
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      toast({
-        title: "Recurso não suportado",
-        description: "Seu navegador não suporta reconhecimento de voz.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
+  const handleToggleListening = () => {
+    toggleListening((transcript: string) => {
+      setInputText(transcript);
+    });
   };
 
   const shareLocation = () => {
@@ -307,7 +155,7 @@ const ChatWidget = () => {
 
         setMessages(prev => [...prev, locationMessage]);
         
-        await sendToWebhook({
+        await handleSendToWebhook({
           type: 'location',
           content: 'Usuário compartilhou localização',
           metadata: { latitude, longitude }
@@ -324,65 +172,15 @@ const ChatWidget = () => {
     );
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image' | 'camera') => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "Arquivo muito grande",
-        description: "O arquivo deve ter no máximo 10MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const fileUrl = URL.createObjectURL(file);
-    
-    const fileMessage: Message = {
-      id: `file-${Date.now()}`,
-      text: `📎 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`,
-      sender: 'user',
-      timestamp: new Date(),
-      type: type === 'camera' ? 'image' : type,
-      fileData: {
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        fileUrl
-      }
-    };
-
-    setMessages(prev => [...prev, fileMessage]);
-
-    // Convert file to base64 for webhook
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = reader.result as string;
-      
-      await sendToWebhook({
-        type: type === 'camera' ? 'image' : type,
-        content: `Arquivo enviado: ${file.name}`,
-        metadata: {
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          base64Data: base64Data.split(',')[1] // Remove data:mime;base64, prefix
-        }
-      });
-    };
-    reader.readAsDataURL(file);
-
-    // Reset input
-    event.target.value = '';
-  };
-
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('pt-BR', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  const addMessage = (message: Message) => {
+    setMessages(prev => [...prev, message]);
   };
 
   if (!isOpen) {
@@ -438,145 +236,28 @@ const ChatWidget = () => {
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className="flex items-start space-x-2 max-w-[80%]">
-                {message.sender === 'bot' && (
-                  <img
-                    src="/lovable-uploads/31655c24-36e9-474c-b93e-6e29607b51cb.png"
-                    alt="Inspetora"
-                    className="w-8 h-8 rounded-full object-cover mt-1"
-                  />
-                )}
-                <div>
-                  <div
-                    className={`p-3 rounded-lg ${
-                      message.sender === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {message.type === 'image' && message.fileData?.fileUrl && (
-                      <img
-                        src={message.fileData.fileUrl}
-                        alt={message.fileData.fileName}
-                        className="max-w-full h-auto rounded mb-2"
-                      />
-                    )}
-                    <p className="text-sm">{message.text}</p>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatTime(message.timestamp)}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <MessageBubble 
+              key={message.id} 
+              message={message} 
+              formatTime={formatTime} 
+            />
           ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-start space-x-2">
-                <img
-                  src="/lovable-uploads/31655c24-36e9-474c-b93e-6e29607b51cb.png"
-                  alt="Inspetora"
-                  className="w-8 h-8 rounded-full object-cover mt-1"
-                />
-                <div className="bg-gray-100 p-3 rounded-lg">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {isLoading && <LoadingIndicator />}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="flex items-center space-x-2 mb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => imageInputRef.current?.click()}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <Camera className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => cameraInputRef.current?.click()}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            📷
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={shareLocation}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <MapPin className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleListening}
-            className={`${isListening ? 'text-red-500' : 'text-gray-500'} hover:text-gray-700`}
-          >
-            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </Button>
-        </div>
-        
-        <div className="flex space-x-2">
-          <Input
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Digite sua mensagem..."
-            onKeyPress={(e) => e.key === 'Enter' && sendTextMessage()}
-            className="flex-1"
-          />
-          <Button onClick={sendTextMessage} disabled={!inputText.trim() || isLoading}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Hidden file inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.txt,.docx,.doc"
-        onChange={(e) => handleFileUpload(e, 'file')}
-        className="hidden"
-      />
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        onChange={(e) => handleFileUpload(e, 'image')}
-        className="hidden"
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => handleFileUpload(e, 'camera')}
-        className="hidden"
+      <ChatInput
+        inputText={inputText}
+        setInputText={setInputText}
+        isListening={isListening}
+        isLoading={isLoading}
+        onSendMessage={sendTextMessage}
+        onToggleListening={handleToggleListening}
+        onShareLocation={shareLocation}
+        onAddMessage={addMessage}
+        onSendToWebhook={handleSendToWebhook}
       />
     </div>
   );
