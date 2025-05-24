@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Minimize2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,7 +49,21 @@ const ChatWidget = () => {
   const handleSendToWebhook = async (messageData: WebhookMessageData) => {
     try {
       setIsLoading(true);
+      
+      // Adiciona mensagem de aguarde
+      const waitMessage: Message = {
+        id: `wait-${Date.now()}`,
+        text: "⌛ Aguarde um momento enquanto processo sua mensagem...",
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
+      };
+      setMessages(prev => [...prev, waitMessage]);
+
       const messageText = await sendToWebhook(sessionId, messageData);
+      
+      // Remove a mensagem de aguarde
+      setMessages(prev => prev.filter(msg => msg.id !== waitMessage.id));
       
       const botMessage: Message = {
         id: `bot-${Date.now()}`,
@@ -73,18 +86,22 @@ const ChatWidget = () => {
       console.error('Error sending to webhook:', error);
       
       let errorMessage = "Não foi possível enviar a mensagem. Tente novamente.";
+      let errorDescription = "";
       
       if (error.name === 'AbortError') {
-        errorMessage = "A solicitação expirou. O servidor pode estar sobrecarregado.";
-      } else if (error.message.includes('JSON')) {
-        errorMessage = "Resposta inválida do servidor. Tente novamente.";
-      } else if (error.message.includes('Empty response')) {
-        errorMessage = "Recebi uma resposta vazia. Tente novamente.";
+        errorMessage = "A solicitação está demorando mais que o esperado.";
+        errorDescription = "Aguarde um momento e tente novamente.";
+      } else if (error.message === 'EMPTY_RESPONSE') {
+        errorMessage = "Desculpe, ocorreu um erro na comunicação.";
+        errorDescription = "A resposta está vazia. Por favor, tente novamente em alguns instantes.";
+      } else if (error.message === 'INVALID_JSON') {
+        errorMessage = "Erro ao processar a resposta.";
+        errorDescription = "Houve um problema técnico. Tente novamente.";
       }
       
       toast({
-        title: "Erro de comunicação",
-        description: errorMessage,
+        title: errorMessage,
+        description: errorDescription,
         variant: "destructive",
       });
 
