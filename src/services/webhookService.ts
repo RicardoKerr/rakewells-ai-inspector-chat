@@ -1,4 +1,4 @@
-export const WEBHOOK_URL = 'https://n8nwebhook.rakewells.com/webhook/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
+export const WEBHOOK_URL = 'https://n8n.rakewells.com/webhook-test/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
 
 export interface WebhookMessageData {
   type: string;
@@ -6,14 +6,30 @@ export interface WebhookMessageData {
   metadata: any;
 }
 
-export const sendToWebhook = async (sessionId: string, messageData: WebhookMessageData) => {
+interface AudioResponse {
+  audio: string;
+}
+
+interface TextResponse {
+  text: string;
+}
+
+interface BotResponse {
+  text?: string;
+  content?: string;
+  audio?: string;
+}
+
+export type WebhookResponse = (TextResponse | AudioResponse)[];
+
+export const sendToWebhook = async (sessionId: string, messageData: WebhookMessageData): Promise<WebhookResponse> => {
   console.log('Sending to webhook:', messageData);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 segundos
 
   try {
-    const response = await fetch(WEBHOOK_URL, {
+    const serverResponse = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -29,14 +45,14 @@ export const sendToWebhook = async (sessionId: string, messageData: WebhookMessa
 
     clearTimeout(timeoutId);
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', response.headers);
+    console.log('Response status:', serverResponse.status);
+    console.log('Response headers:', serverResponse.headers);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!serverResponse.ok) {
+      throw new Error(`HTTP error! status: ${serverResponse.status}`);
     }
 
-    const responseText = await response.text();
+    const responseText = await serverResponse.text();
     console.log('Raw response text:', responseText);
 
     if (!responseText || responseText.trim() === '') {
@@ -44,9 +60,39 @@ export const sendToWebhook = async (sessionId: string, messageData: WebhookMessa
       throw new Error('EMPTY_RESPONSE');
     }
 
-    let botResponse;
+    let responses: WebhookResponse = [];
+    
     try {
-      botResponse = JSON.parse(responseText);
+      const parsed = JSON.parse(responseText);
+      
+      if (Array.isArray(parsed)) {
+        console.log('Response is array, length:', parsed.length);
+        
+        responses = parsed.map(item => {
+          if ('audio' in item) {
+            console.log('Found audio response');
+            return { audio: item.audio };
+          } else if ('text' in item) {
+            console.log('Found text response:', item.text);
+            return { text: item.text };
+          } else if (typeof item === 'string') {
+            console.log('Found string response:', item);
+            return { text: item };
+          }
+          throw new Error('Invalid response item format');
+        }).filter(item => item !== undefined) as WebhookResponse;
+        
+      } else if (parsed && typeof parsed === 'object') {
+        if ('audio' in parsed) {
+          responses.push({ audio: parsed.audio });
+        }
+        if ('text' in parsed) {
+          responses.push({ text: parsed.text });
+        }
+      } else if (typeof parsed === 'string') {
+        responses.push({ text: parsed });
+      }
+      
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       if (!responseText.trim()) {
@@ -55,45 +101,14 @@ export const sendToWebhook = async (sessionId: string, messageData: WebhookMessa
       throw new Error('INVALID_JSON');
     }
 
-    console.log('Parsed bot response:', botResponse);
-    
-    let messageText = '';
-    
-    if (Array.isArray(botResponse)) {
-      console.log('Response is array, length:', botResponse.length);
-      if (botResponse.length > 0) {
-        const firstItem = botResponse[0];
-        console.log('First item:', firstItem);
-        
-        if (firstItem && typeof firstItem === 'object' && firstItem.text) {
-          messageText = firstItem.text;
-          console.log('Found text in first item:', messageText);
-        } else {
-          console.warn('First item does not have text property');
-        }
-      } else {
-        console.warn('Response array is empty');
-        throw new Error('EMPTY_RESPONSE');
-      }
-    } else if (botResponse && typeof botResponse === 'object') {
-      if (botResponse.text) {
-        messageText = botResponse.text;
-        console.log('Found text in object response:', messageText);
-      } else if (botResponse.content) {
-        messageText = botResponse.content;
-        console.log('Found content in object response:', messageText);
-      }
-    } else if (typeof botResponse === 'string') {
-      messageText = botResponse;
-      console.log('Response is plain string:', messageText);
-    }
-
-    if (!messageText || !messageText.trim()) {
-      console.error('No valid message text found in response');
+    if (responses.length === 0) {
+      console.error('No valid responses found');
       throw new Error('EMPTY_RESPONSE');
     }
 
-    return messageText;
+    console.log('Processed responses:', responses);
+    return responses;
+    
   } catch (error) {
     clearTimeout(timeoutId);
     throw error;

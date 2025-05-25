@@ -15,4 +15,5 @@ export interface Message {
     latitude: number;
     longitude: number;
   };
+  audioData?: string; // Armazena o áudio em base64
 }

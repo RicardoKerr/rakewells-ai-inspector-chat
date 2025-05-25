@@ -10,16 +10,61 @@ import { MessageBubble } from '@/components/chat/MessageBubble';
 import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
 import { ChatInput } from '@/components/chat/ChatInput';
 
+const VOICE_SETTINGS_KEY = 'chatbot-voice-settings';
+
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isListening, toggleListening } = useSpeechRecognition();
+
+  // Initialize voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const storedVoiceName = localStorage.getItem(VOICE_SETTINGS_KEY);
+      
+      if (storedVoiceName) {
+        const voice = voices.find(v => v.name === storedVoiceName);
+        if (voice) {
+          setSelectedVoice(voice);
+          return;
+        }
+      }
+      
+      // Se não encontrou a voz salva, procura a Francisca
+      const francisca = voices.find(voice => 
+        voice.name.toLowerCase().includes('francisca') && 
+        voice.lang.includes('pt')
+      );
+      
+      if (francisca) {
+        setSelectedVoice(francisca);
+        localStorage.setItem(VOICE_SETTINGS_KEY, francisca.name);
+      } else {
+        // Se não encontrou Francisca, procura qualquer voz em português
+        const ptVoice = voices.find(voice => voice.lang.includes('pt'));
+        if (ptVoice) {
+          setSelectedVoice(ptVoice);
+          localStorage.setItem(VOICE_SETTINGS_KEY, ptVoice.name);
+        }
+      }
+    };
+
+    if ('speechSynthesis' in window) {
+      // Carrega as vozes imediatamente se já estiverem disponíveis
+      loadVoices();
+      
+      // Configura o evento para carregar quando as vozes estiverem disponíveis
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
 
   // Initialize session
   useEffect(() => {
@@ -60,28 +105,65 @@ const ChatWidget = () => {
       };
       setMessages(prev => [...prev, waitMessage]);
 
-      const messageText = await sendToWebhook(sessionId, messageData);
+      const responses = await sendToWebhook(sessionId, messageData);
       
       // Remove a mensagem de aguarde
       setMessages(prev => prev.filter(msg => msg.id !== waitMessage.id));
       
-      const botMessage: Message = {
-        id: `bot-${Date.now()}`,
-        text: messageText,
-        sender: 'bot',
-        timestamp: new Date(),
-        type: 'text'
-      };
-      
-      setMessages(prev => [...prev, botMessage]);
-      
-      // Text-to-speech for bot response
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(messageText);
-        utterance.lang = 'pt-BR';
-        utterance.rate = 0.9;
-        speechSynthesis.speak(utterance);
+      // Processa cada resposta do webhook
+      for (const response of responses) {
+        if ('text' in response) {
+          const botMessage: Message = {
+            id: `bot-${Date.now()}-${Math.random()}`,
+            text: response.text,
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'text'
+          };
+          setMessages(prev => [...prev, botMessage]);
+          
+          // Text-to-speech for bot response
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(response.text);
+            utterance.lang = 'pt-BR';
+            utterance.rate = 0.9;
+            
+            if (selectedVoice) {
+              utterance.voice = selectedVoice;
+            }
+            
+            speechSynthesis.speak(utterance);
+          }        } else if ('audio' in response) {
+          // Adiciona mensagem de áudio com os dados de áudio
+          const audioMessage: Message = {
+            id: `bot-${Date.now()}-${Math.random()}`,
+            text: '🔊 Resposta por áudio',
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'audio',
+            audioData: response.audio // Armazena o áudio em base64
+          };
+          setMessages(prev => [...prev, audioMessage]);
+          
+          // Reproduz o áudio base64
+          try {
+            console.log("Reproduzindo áudio base64");
+            const audio = new Audio(`data:audio/mp3;base64,${response.audio}`);
+            audio.volume = 1.0;
+            await audio.play();
+          } catch (error) {
+            console.error('Error playing audio:', error);
+            toast({
+              title: "Erro ao reproduzir áudio",
+              description: "Não foi possível reproduzir o áudio recebido.",
+              variant: "destructive",
+            });
+          }
+        }
+        // Delay entre respostas
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+      
     } catch (error) {
       console.error('Error sending to webhook:', error);
       
@@ -141,14 +223,8 @@ const ChatWidget = () => {
     setInputText('');
   };
 
-  const handleToggleListening = () => {
-    toggleListening((transcript: string) => {
-      setInputText(transcript);
-    });
-  };
-
   const shareLocation = () => {
-    if (!navigator.geolocation) {
+    if (!('geolocation' in navigator)) {
       toast({
         title: "Recurso não suportado",
         description: "Seu navegador não suporta geolocalização.",
@@ -157,10 +233,18 @@ const ChatWidget = () => {
       return;
     }
 
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      toast({
+        title: "Permissão não solicitada",
+        description: "Por segurança, o navegador só permite acesso à localização em sites HTTPS ou localhost. Acesse o sistema por HTTPS para liberar a permissão.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
         const locationMessage: Message = {
           id: `location-${Date.now()}`,
           text: `📍 Localização compartilhada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
@@ -169,9 +253,7 @@ const ChatWidget = () => {
           type: 'location',
           location: { latitude, longitude }
         };
-
         setMessages(prev => [...prev, locationMessage]);
-        
         await handleSendToWebhook({
           type: 'location',
           content: 'Usuário compartilhou localização',
@@ -179,10 +261,17 @@ const ChatWidget = () => {
         });
       },
       (error) => {
-        console.error('Geolocation error:', error);
+        let description = "Não foi possível obter sua localização. Verifique as permissões do navegador.";
+        if (error.code === 1) {
+          description = "Permissão de localização negada. Clique no cadeado ao lado do endereço do site e permita o acesso à localização.";
+        } else if (error.code === 2) {
+          description = "Localização indisponível. Tente novamente em outro local ou rede.";
+        } else if (error.code === 3) {
+          description = "Tempo de espera excedido ao tentar obter localização.";
+        }
         toast({
           title: "Erro de localização",
-          description: "Não foi possível obter sua localização. Verifique as permissões.",
+          description,
           variant: "destructive",
         });
       }
@@ -198,6 +287,28 @@ const ChatWidget = () => {
 
   const addMessage = (message: Message) => {
     setMessages(prev => [...prev, message]);
+  };
+
+  const handleToggleListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast({
+        title: "Recurso não suportado",
+        description: "Seu navegador não suporta reconhecimento de voz.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      toast({
+        title: "Permissão não solicitada",
+        description: "Por segurança, o navegador só permite acesso ao microfone em sites HTTPS ou localhost. Acesse o sistema por HTTPS para liberar a permissão.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toggleListening((transcript: string) => {
+      setInputText(transcript);
+    });
   };
 
   if (!isOpen) {

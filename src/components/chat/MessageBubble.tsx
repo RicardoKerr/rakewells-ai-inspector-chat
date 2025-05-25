@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Message } from '@/types/chat';
 
 interface MessageBubbleProps {
@@ -8,6 +8,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   return (
     <div className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
       <div className="flex items-start space-x-2 max-w-[80%]">
@@ -32,8 +33,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTim
                 alt={message.fileData.fileName}
                 className="max-w-full h-auto rounded mb-2"
               />
+            )}            {message.type === 'audio' ? (
+              <div className="flex flex-col">
+                <span className="text-sm mb-1">{isPlaying ? '🔊 Reproduzindo...' : '🔊 Resposta de áudio'}</span>
+                <button 
+                  onClick={() => {
+                    if (message.audioData) {
+                      setIsPlaying(true);
+                      const audio = new Audio(`data:audio/mp3;base64,${message.audioData}`);
+                      audio.volume = 1.0;
+                      audio.play()
+                        .catch(err => console.error('Erro ao reproduzir áudio:', err))
+                        .finally(() => {
+                          // Quando o áudio terminar de tocar
+                          audio.onended = () => setIsPlaying(false);
+                        });
+                    }
+                  }}
+                  disabled={isPlaying}
+                  className={`${isPlaying ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} text-white text-xs py-1 px-2 rounded flex items-center transition-colors`}
+                >
+                  <span className="mr-1">{isPlaying ? '🔄' : '▶️'}</span> 
+                  {isPlaying ? 'Reproduzindo...' : 'Reproduzir novamente'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">{message.text}</p>
             )}
-            <p className="text-sm">{message.text}</p>
           </div>
           <p className="text-xs text-gray-500 mt-1">
             {formatTime(message.timestamp)}
