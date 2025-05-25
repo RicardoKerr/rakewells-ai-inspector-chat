@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Minimize2, MessageCircle } from 'lucide-react';
+import { X, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -312,16 +312,19 @@ const ChatWidget = () => {
       setInputText(transcript);
     });
   };
-
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg"
+          className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg border-2 border-white overflow-hidden"
           size="lg"
         >
-          <MessageCircle className="h-8 w-8 text-white" />
+          <img
+            src="/lovable-uploads/31655c24-36e9-474c-b93e-6e29607b51cb.png"
+            alt="Inspetora PRF"
+            className="w-full h-full object-cover"
+          />
         </Button>
       </div>
     );
