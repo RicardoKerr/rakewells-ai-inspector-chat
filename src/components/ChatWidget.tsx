@@ -106,6 +106,18 @@ const ChatWidget = () => {
       setMessages(prev => [...prev, waitMessage]);
 
       const responses = await sendToWebhook(sessionId, messageData);
+      console.log('Webhook responses:', responses);
+      if (!responses || responses.length === 0) {
+        toast({
+          title: 'Nenhuma resposta do webhook',
+          description: 'O webhook não retornou dados.',
+          variant: 'destructive',
+        });
+        // Remove mensagem de aguarde
+        setMessages(prev => prev.filter(msg => msg.id !== waitMessage.id));
+        setIsLoading(false);
+        return;
+      }
       
       // Remove a mensagem de aguarde
       setMessages(prev => prev.filter(msg => msg.id !== waitMessage.id));
@@ -118,22 +130,12 @@ const ChatWidget = () => {
             text: response.text,
             sender: 'bot',
             timestamp: new Date(),
-            type: 'text'
-          };
+            type: 'text'          };
           setMessages(prev => [...prev, botMessage]);
           
-          // Text-to-speech for bot response
-          if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(response.text);
-            utterance.lang = 'pt-BR';
-            utterance.rate = 0.9;
-            
-            if (selectedVoice) {
-              utterance.voice = selectedVoice;
-            }
-            
-            speechSynthesis.speak(utterance);
-          }        } else if ('audio' in response) {
+          // Texto será exibido apenas visualmente, sem síntese de voz
+          // A voz virá apenas do áudio base64 do N8N se houver
+        } else if ('audio' in response) {
           // Adiciona mensagem de áudio com os dados de áudio
           const audioMessage: Message = {
             id: `bot-${Date.now()}-${Math.random()}`,

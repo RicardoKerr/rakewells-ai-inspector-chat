@@ -64,6 +64,7 @@ export const sendToWebhook = async (sessionId: string, messageData: WebhookMessa
     
     try {
       const parsed = JSON.parse(responseText);
+      console.log('Parsed JSON:', parsed);
       
       if (Array.isArray(parsed)) {
         console.log('Response is array, length:', parsed.length);
@@ -81,13 +82,18 @@ export const sendToWebhook = async (sessionId: string, messageData: WebhookMessa
           }
           throw new Error('Invalid response item format');
         }).filter(item => item !== undefined) as WebhookResponse;
-        
-      } else if (parsed && typeof parsed === 'object') {
-        if ('audio' in parsed) {
-          responses.push({ audio: parsed.audio });
-        }
-        if ('text' in parsed) {
+          } else if (parsed && typeof parsed === 'object') {
+        // Verifica se é um objeto com múltiplas propriedades
+        if ('audio' in parsed && 'text' in parsed) {
+          // Se tem ambos, cria duas respostas separadas
           responses.push({ text: parsed.text });
+          responses.push({ audio: parsed.audio });
+        } else if ('audio' in parsed) {
+          responses.push({ audio: parsed.audio });
+        } else if ('text' in parsed) {
+          responses.push({ text: parsed.text });
+        } else if ('content' in parsed) {
+          responses.push({ text: parsed.content });
         }
       } else if (typeof parsed === 'string') {
         responses.push({ text: parsed });
