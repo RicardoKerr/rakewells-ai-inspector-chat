@@ -313,12 +313,12 @@ const ChatWidget = () => {
     });
   };
   if (!isOpen) {
-    return (
-      <div className="fixed bottom-6 right-6 z-50">
+    return (      <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg border-2 border-white overflow-hidden"
+          className="h-32 w-32 rounded-full p-0 shadow-lg border-2 border-white overflow-hidden"
           size="lg"
+          variant="ghost"
         >
           <img
             src="/lovable-uploads/31655c24-36e9-474c-b93e-6e29607b51cb.png"

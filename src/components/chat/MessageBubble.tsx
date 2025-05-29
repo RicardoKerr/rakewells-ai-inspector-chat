@@ -42,11 +42,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTim
                       setIsPlaying(true);
                       const audio = new Audio(`data:audio/mp3;base64,${message.audioData}`);
                       audio.volume = 1.0;
+                      audio.onended = () => setIsPlaying(false);
                       audio.play()
-                        .catch(err => console.error('Erro ao reproduzir áudio:', err))
-                        .finally(() => {
-                          // Quando o áudio terminar de tocar
-                          audio.onended = () => setIsPlaying(false);
+                        .catch(err => {
+                          console.error('Erro ao reproduzir áudio:', err);
+                          setIsPlaying(false);
                         });
                     }
                   }}

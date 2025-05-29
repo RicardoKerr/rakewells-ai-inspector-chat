@@ -1,4 +1,4 @@
-export const WEBHOOK_URL = 'https://n8n.rakewells.com/webhook-test/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
+export const WEBHOOK_URL = 'https://n8nwebhook.rakewells.com/webhook/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
 
 export interface WebhookMessageData {
   type: string;
