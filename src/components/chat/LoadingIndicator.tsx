@@ -5,7 +5,7 @@ export const LoadingIndicator: React.FC = () => {
     <div className="flex flex-col items-start space-y-2 p-3 w-fit max-w-[80%]">
       <div className="flex items-start space-x-2">
         <img
-          src="/lovable-uploads/31655c24-36e9-474c-b93e-6e29607b51cb.png"
+          src="/lovable-uploads/5e42413a-248c-43ce-8d29-c53b92e21588.png"
           alt="Inspetora"
           className="w-8 h-8 rounded-full object-cover mt-1"
         />

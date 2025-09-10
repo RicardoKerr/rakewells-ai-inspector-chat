@@ -14,7 +14,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTim
       <div className="flex items-start space-x-2 max-w-[80%]">
         {message.sender === 'bot' && (
           <img
-            src="/lovable-uploads/31655c24-36e9-474c-b93e-6e29607b51cb.png"
+            src="/lovable-uploads/5e42413a-248c-43ce-8d29-c53b92e21588.png"
             alt="Inspetora"
             className="w-8 h-8 rounded-full object-cover mt-1"
           />
