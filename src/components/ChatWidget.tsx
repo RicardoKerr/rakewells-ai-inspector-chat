@@ -321,7 +321,7 @@ const ChatWidget = () => {
           variant="ghost"
         >
           <img
-            src="/lovable-uploads/5e42413a-248c-43ce-8d29-c53b92e21588.png"
+            src="/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png"
             alt="Inspetora PRF"
             className="w-full h-full object-cover"
           />
@@ -336,7 +336,7 @@ const ChatWidget = () => {
       <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <img
-            src="/lovable-uploads/5e42413a-248c-43ce-8d29-c53b92e21588.png"
+            src="/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png"
             alt="Inspetora"
             className="w-10 h-10 rounded-full object-cover"
           />
