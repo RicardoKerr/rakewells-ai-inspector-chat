@@ -6,7 +6,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="text-center max-w-2xl mx-auto px-6">
         <h1 className="text-5xl font-bold text-gray-800 mb-6">
-          Widget de Chatbot Inteligente
+          Widget do Humanito, amigo da TV Humana
         </h1>
         <p className="text-xl text-gray-600 mb-8">
           Converse com nossa Inspetora virtual através de texto, voz, compartilhe localização e envie arquivos.
