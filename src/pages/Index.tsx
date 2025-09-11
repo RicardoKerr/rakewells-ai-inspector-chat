@@ -9,7 +9,7 @@ const Index = () => {
           Widget do Humanito, amigo da TV Humana
         </h1>
         <p className="text-xl text-gray-600 mb-8">
-          Converse com nossa Inspetora virtual através de texto, voz, compartilhe localização e envie arquivos.
+          Converse com Humanito por texto e voz
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-white p-4 rounded-lg shadow-md">
