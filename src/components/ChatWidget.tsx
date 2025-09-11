@@ -341,7 +341,7 @@ const ChatWidget = () => {
             className="w-10 h-10 rounded-full object-cover"
           />
           <div>
-            <h3 className="font-semibold">Inspetora | PRF</h3>
+            <h3 className="font-semibold">Humanito | TV Humana</h3>
             <p className="text-xs opacity-90">Online</p>
           </div>
         </div>
