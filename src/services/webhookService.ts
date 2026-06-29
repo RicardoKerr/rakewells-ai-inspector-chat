@@ -1,4 +1,4 @@
-export const WEBHOOK_URL = 'https://n8nwebhook.rakewells.com/webhook/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
+export const DEFAULT_WEBHOOK_URL = 'https://n8nwebhook.rakewells.com/webhook/8e138917-eba3-4eb4-8fef-384ed3e69bd8';
 
 export interface WebhookMessageData {
   type: string;
@@ -22,14 +22,18 @@ interface BotResponse {
 
 export type WebhookResponse = (TextResponse | AudioResponse)[];
 
-export const sendToWebhook = async (sessionId: string, messageData: WebhookMessageData): Promise<WebhookResponse> => {
+export const sendToWebhook = async (
+  sessionId: string,
+  messageData: WebhookMessageData,
+  webhookUrl: string = DEFAULT_WEBHOOK_URL
+): Promise<WebhookResponse> => {
   console.log('Sending to webhook:', messageData);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 segundos
 
   try {
-    const serverResponse = await fetch(WEBHOOK_URL, {
+    const serverResponse = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
