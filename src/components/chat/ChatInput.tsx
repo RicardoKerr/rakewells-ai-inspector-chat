@@ -18,6 +18,7 @@ interface ChatInputProps {
   onShareLocation: () => void;
   onAddMessage: (message: Message) => void;
   onSendToWebhook: (data: WebhookMessageData) => Promise<void>;
+  features?: { voice?: boolean; location?: boolean; files?: boolean; camera?: boolean };
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -29,7 +30,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onToggleListening,
   onShareLocation,
   onAddMessage,
-  onSendToWebhook
+  onSendToWebhook,
+  features = { voice: true, location: true, files: true, camera: false }
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -76,46 +78,46 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="border-t border-gray-200 p-4">
       <div className="flex items-center space-x-2 mb-2">
-        <Button
+        {features.files && <Button
           variant="ghost"
           size="sm"
           onClick={() => fileInputRef.current?.click()}
           className="text-gray-500 hover:text-gray-700"
         >
           <Paperclip className="h-4 w-4" />
-        </Button>
-        <Button
+        </Button>}
+        {features.files && <Button
           variant="ghost"
           size="sm"
           onClick={() => imageInputRef.current?.click()}
           className="text-gray-500 hover:text-gray-700"
         >
           <Camera className="h-4 w-4" />
-        </Button>
-        <Button
+        </Button>}
+        {features.camera && <Button
           variant="ghost"
           size="sm"
           onClick={() => cameraInputRef.current?.click()}
           className="text-gray-500 hover:text-gray-700"
         >
           📷
-        </Button>
-        <Button
+        </Button>}
+        {features.location && <Button
           variant="ghost"
           size="sm"
           onClick={onShareLocation}
           className="text-gray-500 hover:text-gray-700"
         >
           <MapPin className="h-4 w-4" />
-        </Button>
-        <Button
+        </Button>}
+        {features.voice && <Button
           variant="ghost"
           size="sm"
           onClick={onToggleListening}
           className={`${isListening ? 'text-red-500' : 'text-gray-500'} hover:text-gray-700`}
         >
           {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </Button>
+        </Button>}
       </div>
       
       <div className="flex space-x-2">

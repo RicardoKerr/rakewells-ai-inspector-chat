@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from '@/types/chat';
-import { sendToWebhook, WebhookMessageData } from '@/services/webhookService';
+import { sendToWebhook, WebhookMessageData, DEFAULT_WEBHOOK_URL } from '@/services/webhookService';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
@@ -12,7 +12,32 @@ import { ChatInput } from '@/components/chat/ChatInput';
 
 const VOICE_SETTINGS_KEY = 'chatbot-voice-settings';
 
-const ChatWidget = () => {
+export interface ChatWidgetConfig {
+  id?: string;
+  botName?: string;
+  headerTitle?: string;
+  avatarUrl?: string;
+  primaryColor?: string;
+  welcomeMessage?: string;
+  webhookUrl?: string;
+  features?: { voice?: boolean; location?: boolean; files?: boolean; camera?: boolean };
+}
+
+interface ChatWidgetProps {
+  config?: ChatWidgetConfig;
+  embedded?: boolean;
+}
+
+const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }) => {
+  const {
+    headerTitle = 'Humanito | TV Humana',
+    avatarUrl = '/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png',
+    primaryColor = '#2563eb',
+    welcomeMessage = 'Olá! 😊 Estou aqui para ajudar com temas relacionados à inteligência artificial e tecnologia. O que você gostaria de saber ou discutir?',
+    webhookUrl = DEFAULT_WEBHOOK_URL,
+    features = { voice: true, location: true, files: true, camera: false },
+  } = config;
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -68,23 +93,23 @@ const ChatWidget = () => {
 
   // Initialize session
   useEffect(() => {
-    let storedSessionId = localStorage.getItem('chatbot-session-id');
+    const key = `chatbot-session-${config.id || 'default'}`;
+    let storedSessionId = localStorage.getItem(key);
     if (!storedSessionId) {
       storedSessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('chatbot-session-id', storedSessionId);
+      localStorage.setItem(key, storedSessionId);
     }
     setSessionId(storedSessionId);
 
-    // Add welcome message
-    const welcomeMessage: Message = {
+    const welcomeMsg: Message = {
       id: `msg-${Date.now()}`,
-      text: 'Olá! 😊 Estou aqui para ajudar com temas relacionados à inteligência artificial e tecnologia. O que você gostaria de saber ou discutir?',
+      text: welcomeMessage,
       sender: 'bot',
       timestamp: new Date(),
-      type: 'text'
+      type: 'text',
     };
-    setMessages([welcomeMessage]);
-  }, []);
+    setMessages([welcomeMsg]);
+  }, [config.id, welcomeMessage]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -105,7 +130,7 @@ const ChatWidget = () => {
       };
       setMessages(prev => [...prev, waitMessage]);
 
-      const responses = await sendToWebhook(sessionId, messageData);
+      const responses = await sendToWebhook(sessionId, messageData, webhookUrl);
       console.log('Webhook responses:', responses);
       if (!responses || responses.length === 0) {
         toast({
@@ -312,6 +337,44 @@ const ChatWidget = () => {
       setInputText(transcript);
     });
   };
+  if (embedded) {
+    // Render always-open, fullscreen
+    return (
+      <div className="w-full h-full bg-white flex flex-col">
+        <div className="text-white p-4 flex items-center space-x-3" style={{ backgroundColor: primaryColor }}>
+          {avatarUrl && (
+            <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+          )}
+          <div>
+            <h3 className="font-semibold">{headerTitle}</h3>
+            <p className="text-xs opacity-90">Online</p>
+          </div>
+        </div>
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-4">
+            {messages.map((m) => (
+              <MessageBubble key={m.id} message={m} formatTime={formatTime} />
+            ))}
+            {isLoading && <LoadingIndicator />}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+        <ChatInput
+          inputText={inputText}
+          setInputText={setInputText}
+          isListening={isListening}
+          isLoading={isLoading}
+          onSendMessage={sendTextMessage}
+          onToggleListening={handleToggleListening}
+          onShareLocation={shareLocation}
+          onAddMessage={addMessage}
+          onSendToWebhook={handleSendToWebhook}
+          features={features}
+        />
+      </div>
+    );
+  }
+
   if (!isOpen) {
     return (      <div className="fixed bottom-6 right-6 z-50">
         <Button
@@ -321,8 +384,8 @@ const ChatWidget = () => {
           variant="ghost"
         >
           <img
-            src="/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png"
-            alt="Inspetora PRF"
+            src={avatarUrl}
+            alt={headerTitle}
             className="w-full h-full object-cover"
           />
         </Button>
@@ -333,15 +396,15 @@ const ChatWidget = () => {
   return (
     <div className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col">
       {/* Header */}
-      <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+      <div className="text-white p-4 rounded-t-lg flex items-center justify-between" style={{ backgroundColor: primaryColor }}>
         <div className="flex items-center space-x-3">
           <img
-            src="/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png"
-            alt="Inspetora"
+            src={avatarUrl}
+            alt={headerTitle}
             className="w-10 h-10 rounded-full object-cover"
           />
           <div>
-            <h3 className="font-semibold">Humanito | TV Humana</h3>
+            <h3 className="font-semibold">{headerTitle}</h3>
             <p className="text-xs opacity-90">Online</p>
           </div>
         </div>
@@ -350,7 +413,7 @@ const ChatWidget = () => {
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(false)}
-            className="text-white hover:bg-blue-700"
+            className="text-white hover:bg-black/10"
           >
             <Minimize2 className="h-4 w-4" />
           </Button>
@@ -358,7 +421,7 @@ const ChatWidget = () => {
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(false)}
-            className="text-white hover:bg-blue-700"
+            className="text-white hover:bg-black/10"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -391,6 +454,7 @@ const ChatWidget = () => {
         onShareLocation={shareLocation}
         onAddMessage={addMessage}
         onSendToWebhook={handleSendToWebhook}
+        features={features}
       />
     </div>
   );
