@@ -25,20 +25,28 @@ export type WebhookResponse = (TextResponse | AudioResponse)[];
 export const sendToWebhook = async (
   sessionId: string,
   messageData: WebhookMessageData,
-  webhookUrl: string = DEFAULT_WEBHOOK_URL
+  webhookUrl: string = DEFAULT_WEBHOOK_URL,
+  widgetId?: string
 ): Promise<WebhookResponse> => {
-  console.log('Sending to webhook:', messageData);
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 segundos
 
+  // Quando o widget está publicado, a chamada passa pelo backend, que guarda
+  // o endereço do webhook em segredo (nunca exposto ao navegador).
+  const useProxy = Boolean(widgetId);
+  const endpoint = useProxy
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/widget-chat`
+    : webhookUrl;
+
   try {
-    const serverResponse = await fetch(webhookUrl, {
+    const serverResponse = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(useProxy ? { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } : {}),
       },
       body: JSON.stringify({
+        ...(useProxy ? { widgetId } : {}),
         sessionId,
         type: messageData.type,
         content: messageData.content,
