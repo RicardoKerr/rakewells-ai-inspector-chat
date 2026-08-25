@@ -456,7 +456,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
           onShareLocation={shareLocation}
           onAddMessage={addMessage}
           onSendToWebhook={handleSendToWebhook}
-          features={features}
+          features={inputFeatures}
           voice={voiceControls}
         />
       </div>
@@ -543,7 +543,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
         onShareLocation={shareLocation}
         onAddMessage={addMessage}
         onSendToWebhook={handleSendToWebhook}
-        features={features}
+        features={inputFeatures}
         voice={voiceControls}
       />
     </div>
