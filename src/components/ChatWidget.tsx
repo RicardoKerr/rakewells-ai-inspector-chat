@@ -5,7 +5,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from '@/types/chat';
 import { sendToWebhook, WebhookMessageData, DEFAULT_WEBHOOK_URL } from '@/services/webhookService';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useVoiceRecorder, isRecordingSupported } from '@/hooks/useVoiceRecorder';
+import { useSpeech } from '@/hooks/useSpeech';
+import { transcribeAudio } from '@/services/voiceService';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -21,6 +23,9 @@ export interface ChatWidgetConfig {
   welcomeMessage?: string;
   webhookUrl?: string;
   features?: { voice?: boolean; location?: boolean; files?: boolean; camera?: boolean };
+  voiceAutoSend?: boolean;
+  voiceReplyEnabled?: boolean;
+  voiceName?: string;
 }
 
 interface ChatWidgetProps {
@@ -37,6 +42,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     welcomeMessage = 'Olá! 😊 Estou aqui para ajudar com temas relacionados à inteligência artificial e tecnologia. O que você gostaria de saber ou discutir?',
     webhookUrl = DEFAULT_WEBHOOK_URL,
     features = { voice: true, location: true, files: true, camera: false },
+    voiceAutoSend = false,
+    voiceReplyEnabled = false,
+    voiceName = 'alloy',
   } = config;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -44,53 +52,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
-  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isListening, toggleListening } = useSpeechRecognition();
-
-  // Initialize voices
-  useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const storedVoiceName = localStorage.getItem(VOICE_SETTINGS_KEY);
-      
-      if (storedVoiceName) {
-        const voice = voices.find(v => v.name === storedVoiceName);
-        if (voice) {
-          setSelectedVoice(voice);
-          return;
-        }
-      }
-      
-      // Se não encontrou a voz salva, procura a Francisca
-      const francisca = voices.find(voice => 
-        voice.name.toLowerCase().includes('francisca') && 
-        voice.lang.includes('pt')
-      );
-      
-      if (francisca) {
-        setSelectedVoice(francisca);
-        localStorage.setItem(VOICE_SETTINGS_KEY, francisca.name);
-      } else {
-        // Se não encontrou Francisca, procura qualquer voz em português
-        const ptVoice = voices.find(voice => voice.lang.includes('pt'));
-        if (ptVoice) {
-          setSelectedVoice(ptVoice);
-          localStorage.setItem(VOICE_SETTINGS_KEY, ptVoice.name);
-        }
-      }
-    };
-
-    if ('speechSynthesis' in window) {
-      // Carrega as vozes imediatamente se já estiverem disponíveis
-      loadVoices();
-      
-      // Configura o evento para carregar quando as vozes estiverem disponíveis
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-  }, []);
+  const recorder = useVoiceRecorder();
+  const speech = useSpeech();
+  const voiceSupported = isRecordingSupported();
 
   // Initialize session
   useEffect(() => {
