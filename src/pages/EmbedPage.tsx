@@ -32,6 +32,9 @@ export default function EmbedPage() {
         primaryColor: widget.primary_color,
         welcomeMessage: widget.welcome_message,
         features: widget.features,
+        voiceAutoSend: widget.voice_auto_send,
+        voiceReplyEnabled: widget.voice_reply_enabled,
+        voiceName: widget.voice_name,
       }} />
     </div>
   );
