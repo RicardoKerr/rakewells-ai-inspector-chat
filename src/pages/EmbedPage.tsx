@@ -11,9 +11,9 @@ export default function EmbedPage() {
 
   useEffect(() => {
     if (!id) return;
-    supabase.from('widgets').select('*').eq('id', id).eq('is_active', true).maybeSingle()
+    supabase.from('public_widgets' as any).select('*').eq('id', id).maybeSingle()
       .then(({ data, error }) => {
-        if (error) setError(error.message);
+        if (error) setError('Não foi possível carregar o widget.');
         else if (!data) setError('Widget não encontrado ou inativo.');
         else setWidget(data as any);
       });
@@ -31,7 +31,6 @@ export default function EmbedPage() {
         avatarUrl: widget.avatar_url || undefined,
         primaryColor: widget.primary_color,
         welcomeMessage: widget.welcome_message,
-        webhookUrl: widget.webhook_url || undefined,
         features: widget.features,
       }} />
     </div>
