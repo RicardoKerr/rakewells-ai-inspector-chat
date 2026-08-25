@@ -11,6 +11,7 @@ import { transcribeAudio } from '@/services/voiceService';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { useElevenLabsAgent } from '@/hooks/useElevenLabsAgent';
 
 const VOICE_SETTINGS_KEY = 'chatbot-voice-settings';
 
