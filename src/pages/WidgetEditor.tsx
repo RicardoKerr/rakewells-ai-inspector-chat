@@ -196,7 +196,13 @@ export default function WidgetEditor() {
                 <Switch checked={!!form.features?.[k]} onCheckedChange={(v) => setFeature(k, v)} />
               </div>
             ))}
-            {form.features?.voice && (
+            {form.conversation_mode === 'elevenlabs_agent' && (
+              <p className="text-xs text-gray-500 pt-3 mt-2 border-t">
+                No modo Agente ElevenLabs a voz é gerenciada pelo agente: o visitante clica em
+                "Iniciar conversa" e fala em tempo real. Requer HTTPS e permissão de microfone.
+              </p>
+            )}
+            {form.conversation_mode !== 'elevenlabs_agent' && form.features?.voice && (
               <div className="pt-3 mt-2 border-t space-y-3">
                 <p className="text-xs text-gray-500">
                   A voz usa transcrição no servidor: o visitante grava, o áudio é transcrito e enviado ao bot.
