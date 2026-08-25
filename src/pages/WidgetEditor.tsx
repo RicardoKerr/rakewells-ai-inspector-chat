@@ -103,7 +103,28 @@ export default function WidgetEditor() {
             <Field label="Nome interno"><Input value={form.name || ''} onChange={(e) => set('name', e.target.value)} /></Field>
             <Field label="Nome do bot"><Input value={form.bot_name || ''} onChange={(e) => set('bot_name', e.target.value)} /></Field>
             <Field label="Título do header"><Input value={form.header_title || ''} onChange={(e) => set('header_title', e.target.value)} /></Field>
-            <Field label="URL do avatar"><Input value={form.avatar_url || ''} onChange={(e) => set('avatar_url', e.target.value)} placeholder="/lovable-uploads/..." /></Field>
+            <Field label="Avatar do bot">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 rounded-full bg-muted overflow-hidden flex items-center justify-center border shrink-0">
+                  {form.avatar_url ? (
+                    <img src={form.avatar_url} alt="Avatar do bot" className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input id="avatar-file" type="file" accept="image/*" className="hidden" onChange={onAvatarFile} />
+                  <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => document.getElementById('avatar-file')?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />{uploading ? 'Enviando...' : 'Enviar imagem'}
+                  </Button>
+                  {form.avatar_url && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => set('avatar_url', '')}>Remover</Button>
+                  )}
+                </div>
+              </div>
+            </Field>
+            <Field label="Ou cole uma URL do avatar"><Input value={form.avatar_url?.startsWith('data:') ? '' : (form.avatar_url || '')} onChange={(e) => set('avatar_url', e.target.value)} placeholder="https://... ou /lovable-uploads/..." /></Field>
+
             <Field label="Cor primária"><Input type="color" value={form.primary_color || '#2563eb'} onChange={(e) => set('primary_color', e.target.value)} /></Field>
             <Field label="Mensagem de boas-vindas"><Textarea rows={3} value={form.welcome_message || ''} onChange={(e) => set('welcome_message', e.target.value)} /></Field>
           </Section>
