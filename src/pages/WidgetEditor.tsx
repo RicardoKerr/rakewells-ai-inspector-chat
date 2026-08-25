@@ -22,6 +22,8 @@ const DEFAULTS: Partial<Widget> = {
   webhook_url: '',
   knowledge_mode: 'webhook',
   system_prompt: '',
+  conversation_mode: 'webhook',
+  elevenlabs_agent_id: '',
   features: { voice: true, location: true, files: true, camera: false },
   voice_auto_send: true,
   voice_reply_enabled: true,
@@ -155,15 +157,36 @@ export default function WidgetEditor() {
           </Section>
 
           <Section title="Conexão com IA">
-            <Field label="Modo">
-              <select className="w-full border rounded h-10 px-3" value={form.knowledge_mode} onChange={(e) => set('knowledge_mode', e.target.value)}>
-                <option value="webhook">Webhook (n8n / API)</option>
-                <option value="rag" disabled>RAG / Base de conhecimento (em breve)</option>
-                <option value="qna" disabled>Q&A (em breve)</option>
+            <Field label="Backend de conversa">
+              <select className="w-full border rounded h-10 px-3" value={form.conversation_mode || 'webhook'} onChange={(e) => set('conversation_mode', e.target.value)}>
+                <option value="webhook">Webhook (n8n / API) + voz OpenAI</option>
+                <option value="elevenlabs_agent">Agente de conversa ElevenLabs (voz completa)</option>
               </select>
             </Field>
-            <Field label="URL do webhook"><Input value={form.webhook_url || ''} onChange={(e) => set('webhook_url', e.target.value)} placeholder="https://..." /></Field>
-            <Field label="System prompt (opcional)"><Textarea rows={3} value={form.system_prompt || ''} onChange={(e) => set('system_prompt', e.target.value)} /></Field>
+
+            {form.conversation_mode === 'elevenlabs_agent' ? (
+              <>
+                <Field label="ElevenLabs Agent ID">
+                  <Input value={form.elevenlabs_agent_id || ''} onChange={(e) => set('elevenlabs_agent_id', e.target.value)} placeholder="agent_xxxxxxxxxxxxxxxx" />
+                </Field>
+                <p className="text-xs text-gray-500">
+                  Crie o agente no painel do ElevenLabs (Conversational AI), copie o Agent ID e cole acima.
+                  Todo o pipeline de voz (escuta, LLM e fala) roda no ElevenLabs; o widget apenas exibe as transcrições.
+                </p>
+              </>
+            ) : (
+              <>
+                <Field label="Modo de conhecimento">
+                  <select className="w-full border rounded h-10 px-3" value={form.knowledge_mode} onChange={(e) => set('knowledge_mode', e.target.value)}>
+                    <option value="webhook">Webhook (n8n / API)</option>
+                    <option value="rag" disabled>RAG / Base de conhecimento (em breve)</option>
+                    <option value="qna" disabled>Q&A (em breve)</option>
+                  </select>
+                </Field>
+                <Field label="URL do webhook"><Input value={form.webhook_url || ''} onChange={(e) => set('webhook_url', e.target.value)} placeholder="https://..." /></Field>
+                <Field label="System prompt (opcional)"><Textarea rows={3} value={form.system_prompt || ''} onChange={(e) => set('system_prompt', e.target.value)} /></Field>
+              </>
+            )}
           </Section>
 
           <Section title="Funcionalidades">
