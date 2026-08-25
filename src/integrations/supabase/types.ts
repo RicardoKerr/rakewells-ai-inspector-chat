@@ -44,6 +44,13 @@ export type Database = {
             foreignKeyName: "conversations_widget_id_fkey"
             columns: ["widget_id"]
             isOneToOne: false
+            referencedRelation: "public_widgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
             referencedRelation: "widgets"
             referencedColumns: ["id"]
           },
@@ -161,7 +168,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_widgets: {
+        Row: {
+          avatar_url: string | null
+          bot_name: string | null
+          features: Json | null
+          header_title: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          primary_color: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bot_name?: string | null
+          features?: Json | null
+          header_title?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          primary_color?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bot_name?: string | null
+          features?: Json | null
+          header_title?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          primary_color?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
