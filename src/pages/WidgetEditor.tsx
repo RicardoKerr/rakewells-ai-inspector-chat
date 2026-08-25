@@ -23,6 +23,9 @@ const DEFAULTS: Partial<Widget> = {
   knowledge_mode: 'webhook',
   system_prompt: '',
   features: { voice: true, location: true, files: true, camera: false },
+  voice_auto_send: true,
+  voice_reply_enabled: true,
+  voice_name: 'alloy',
   is_active: true,
 };
 
@@ -170,6 +173,31 @@ export default function WidgetEditor() {
                 <Switch checked={!!form.features?.[k]} onCheckedChange={(v) => setFeature(k, v)} />
               </div>
             ))}
+            {form.features?.voice && (
+              <div className="pt-3 mt-2 border-t space-y-3">
+                <p className="text-xs text-gray-500">
+                  A voz usa transcrição no servidor: o visitante grava, o áudio é transcrito e enviado ao bot.
+                  Requer HTTPS e permissão de microfone no navegador.
+                </p>
+                <div className="flex items-center justify-between">
+                  <Label>Enviar automaticamente após falar</Label>
+                  <Switch checked={!!form.voice_auto_send} onCheckedChange={(v) => set('voice_auto_send', v)} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Resposta falada do bot</Label>
+                  <Switch checked={!!form.voice_reply_enabled} onCheckedChange={(v) => set('voice_reply_enabled', v)} />
+                </div>
+                {form.voice_reply_enabled && (
+                  <Field label="Voz do bot">
+                    <select className="w-full border rounded h-10 px-3" value={form.voice_name || 'alloy'} onChange={(e) => set('voice_name', e.target.value)}>
+                      {['alloy','echo','fable','onyx','nova','shimmer'].map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between pt-2 border-t mt-2">
               <Label>Widget ativo</Label>
               <Switch checked={!!form.is_active} onCheckedChange={(v) => set('is_active', v)} />
@@ -200,6 +228,9 @@ export default function WidgetEditor() {
               welcomeMessage: form.welcome_message,
               webhookUrl: form.webhook_url,
               features: form.features,
+              voiceAutoSend: form.voice_auto_send,
+              voiceReplyEnabled: form.voice_reply_enabled,
+              voiceName: form.voice_name,
             }} />
           </div>
         </div>
