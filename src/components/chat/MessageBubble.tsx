@@ -5,17 +5,18 @@ import { Message } from '@/types/chat';
 interface MessageBubbleProps {
   message: Message;
   formatTime: (date: Date) => string;
+  avatarUrl?: string;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime, avatarUrl }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   return (
     <div className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
       <div className="flex items-start space-x-2 max-w-[80%]">
-        {message.sender === 'bot' && (
+        {message.sender === 'bot' && avatarUrl && (
         <img
-          src="/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png"
-          alt="Inspetora"
+          src={avatarUrl}
+          alt=""
           className="w-8 h-8 rounded-full object-cover mt-1"
         />
         )}
