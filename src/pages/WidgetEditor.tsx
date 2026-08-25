@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Copy } from 'lucide-react';
+import { ArrowLeft, Copy, Upload, Image as ImageIcon } from 'lucide-react';
 import ChatWidget from '@/components/ChatWidget';
 import type { Widget } from '@/types/widget';
 
@@ -35,6 +35,28 @@ export default function WidgetEditor() {
   const [form, setForm] = useState<any>(DEFAULTS);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  async function onAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Arquivo inválido', description: 'Escolha uma imagem.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await resizeToDataUrl(file, 256);
+      set('avatar_url', dataUrl);
+      toast({ title: 'Imagem carregada', description: 'Clique em Salvar para aplicar.' });
+    } catch (err: any) {
+      toast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  }
+
 
   useEffect(() => {
     if (!isNew && user && isAdmin) load();
@@ -103,7 +125,28 @@ export default function WidgetEditor() {
             <Field label="Nome interno"><Input value={form.name || ''} onChange={(e) => set('name', e.target.value)} /></Field>
             <Field label="Nome do bot"><Input value={form.bot_name || ''} onChange={(e) => set('bot_name', e.target.value)} /></Field>
             <Field label="Título do header"><Input value={form.header_title || ''} onChange={(e) => set('header_title', e.target.value)} /></Field>
-            <Field label="URL do avatar"><Input value={form.avatar_url || ''} onChange={(e) => set('avatar_url', e.target.value)} placeholder="/lovable-uploads/..." /></Field>
+            <Field label="Avatar do bot">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 rounded-full bg-muted overflow-hidden flex items-center justify-center border shrink-0">
+                  {form.avatar_url ? (
+                    <img src={form.avatar_url} alt="Avatar do bot" className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input id="avatar-file" type="file" accept="image/*" className="hidden" onChange={onAvatarFile} />
+                  <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => document.getElementById('avatar-file')?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />{uploading ? 'Enviando...' : 'Enviar imagem'}
+                  </Button>
+                  {form.avatar_url && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => set('avatar_url', '')}>Remover</Button>
+                  )}
+                </div>
+              </div>
+            </Field>
+            <Field label="Ou cole uma URL do avatar"><Input value={form.avatar_url?.startsWith('data:') ? '' : (form.avatar_url || '')} onChange={(e) => set('avatar_url', e.target.value)} placeholder="https://... ou /lovable-uploads/..." /></Field>
+
             <Field label="Cor primária"><Input type="color" value={form.primary_color || '#2563eb'} onChange={(e) => set('primary_color', e.target.value)} /></Field>
             <Field label="Mensagem de boas-vindas"><Textarea rows={3} value={form.welcome_message || ''} onChange={(e) => set('welcome_message', e.target.value)} /></Field>
           </Section>
@@ -187,4 +230,18 @@ function CodeBox({ value }: { value: string }) {
       </Button>
     </div>
   );
+}
+async function resizeToDataUrl(file: File, max: number): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Não foi possível processar a imagem.');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+  return canvas.toDataURL('image/webp', 0.9);
 }
