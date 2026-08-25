@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Minimize2 } from 'lucide-react';
+import { X, Minimize2, Phone, PhoneOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,7 @@ import { transcribeAudio } from '@/services/voiceService';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { useElevenLabsAgent } from '@/hooks/useElevenLabsAgent';
 
 const VOICE_SETTINGS_KEY = 'chatbot-voice-settings';
 
@@ -26,6 +27,8 @@ export interface ChatWidgetConfig {
   voiceAutoSend?: boolean;
   voiceReplyEnabled?: boolean;
   voiceName?: string;
+  conversationMode?: string;
+  elevenlabsAgentId?: string;
 }
 
 interface ChatWidgetProps {
@@ -45,7 +48,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     voiceAutoSend = false,
     voiceReplyEnabled = false,
     voiceName = 'alloy',
+    conversationMode = 'webhook',
+    elevenlabsAgentId,
   } = config;
+
+  const agentMode = conversationMode === 'elevenlabs_agent';
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,6 +66,25 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
   const recorder = useVoiceRecorder();
   const speech = useSpeech();
   const voiceSupported = isRecordingSupported();
+
+  const agent = useElevenLabsAgent({
+    widgetId,
+    onEvent: ({ role, text }) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${role}-${Date.now()}-${Math.random()}`,
+          text,
+          sender: role === 'user' ? 'user' : 'bot',
+          timestamp: new Date(),
+          type: 'text',
+        },
+      ]);
+    },
+    onError: (message) => {
+      toast({ title: 'Agente de voz', description: message, variant: 'destructive' });
+    },
+  });
 
   // Initialize session
   useEffect(() => {
@@ -204,6 +230,30 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     const text = (override ?? inputText).trim();
     if (!text) return;
 
+    if (agentMode) {
+      if (!agent.isConnected) {
+        toast({
+          title: 'Conversa não iniciada',
+          description: 'Clique em "Iniciar conversa" para falar com o agente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        text,
+        sender: 'user',
+        timestamp: new Date(),
+        type: 'text',
+      };
+      setMessages(prev => [...prev, userMessage]);
+      setInputText('');
+      if (!agent.sendText(text)) {
+        toast({ title: 'Falha ao enviar', description: 'A mensagem não pôde ser enviada ao agente.', variant: 'destructive' });
+      }
+      return;
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       text,
@@ -222,6 +272,32 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
       metadata: null
     });
   };
+
+  const AgentBar = () => (
+    <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 bg-gray-50">
+      <span className="text-xs text-gray-600 flex items-center gap-2">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            agent.isConnected ? (agent.isSpeaking ? 'bg-green-500 animate-pulse' : 'bg-green-500') : 'bg-gray-400'
+          }`}
+        />
+        {agent.isConnecting
+          ? 'Conectando ao agente...'
+          : agent.isConnected
+            ? agent.isSpeaking ? 'Agente falando...' : 'Ouvindo você...'
+            : 'Conversa por voz desligada'}
+      </span>
+      {agent.isConnected ? (
+        <Button size="sm" variant="destructive" onClick={agent.stop}>
+          <PhoneOff className="h-4 w-4 mr-2" />Encerrar
+        </Button>
+      ) : (
+        <Button size="sm" onClick={agent.start} disabled={agent.isConnecting}>
+          <Phone className="h-4 w-4 mr-2" />Iniciar conversa
+        </Button>
+      )}
+    </div>
+  );
 
   const shareLocation = () => {
     if (!('geolocation' in navigator)) {
@@ -346,6 +422,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     onToggleMute: speech.toggleMute,
   };
 
+  // No modo agente, o microfone é gerenciado pelo próprio agente (WebRTC).
+  const inputFeatures = agentMode ? { ...features, voice: false } : features;
+
   if (embedded) {
     // Render always-open, fullscreen
     return (
@@ -368,6 +447,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
+        {agentMode && <AgentBar />}
         <ChatInput
           inputText={inputText}
           setInputText={setInputText}
@@ -376,7 +456,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
           onShareLocation={shareLocation}
           onAddMessage={addMessage}
           onSendToWebhook={handleSendToWebhook}
-          features={features}
+          features={inputFeatures}
           voice={voiceControls}
         />
       </div>
@@ -452,6 +532,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
         </div>
       </ScrollArea>
 
+      {agentMode && <AgentBar />}
+
       {/* Input Area */}
       <ChatInput
         inputText={inputText}
@@ -461,7 +543,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
         onShareLocation={shareLocation}
         onAddMessage={addMessage}
         onSendToWebhook={handleSendToWebhook}
-        features={features}
+        features={inputFeatures}
         voice={voiceControls}
       />
     </div>

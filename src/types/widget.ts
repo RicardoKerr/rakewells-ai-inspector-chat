@@ -16,6 +16,8 @@ export interface Widget {
   webhook_url: string | null;
   knowledge_mode: string;
   system_prompt: string | null;
+  conversation_mode: string;
+  elevenlabs_agent_id: string | null;
   features: WidgetFeatures;
   voice_auto_send: boolean;
   voice_reply_enabled: boolean;

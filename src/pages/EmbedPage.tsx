@@ -35,6 +35,8 @@ export default function EmbedPage() {
         voiceAutoSend: widget.voice_auto_send,
         voiceReplyEnabled: widget.voice_reply_enabled,
         voiceName: widget.voice_name,
+        conversationMode: widget.conversation_mode,
+        elevenlabsAgentId: widget.elevenlabs_agent_id || undefined,
       }} />
     </div>
   );
