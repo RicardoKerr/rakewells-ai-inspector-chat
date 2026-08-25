@@ -17,6 +17,9 @@ export interface Widget {
   knowledge_mode: string;
   system_prompt: string | null;
   features: WidgetFeatures;
+  voice_auto_send: boolean;
+  voice_reply_enabled: boolean;
+  voice_name: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

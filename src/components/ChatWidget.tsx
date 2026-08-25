@@ -5,7 +5,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from '@/types/chat';
 import { sendToWebhook, WebhookMessageData, DEFAULT_WEBHOOK_URL } from '@/services/webhookService';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useVoiceRecorder, isRecordingSupported } from '@/hooks/useVoiceRecorder';
+import { useSpeech } from '@/hooks/useSpeech';
+import { transcribeAudio } from '@/services/voiceService';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { LoadingIndicator } from '@/components/chat/LoadingIndicator';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -21,6 +23,9 @@ export interface ChatWidgetConfig {
   welcomeMessage?: string;
   webhookUrl?: string;
   features?: { voice?: boolean; location?: boolean; files?: boolean; camera?: boolean };
+  voiceAutoSend?: boolean;
+  voiceReplyEnabled?: boolean;
+  voiceName?: string;
 }
 
 interface ChatWidgetProps {
@@ -37,6 +42,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     welcomeMessage = 'Olá! 😊 Estou aqui para ajudar com temas relacionados à inteligência artificial e tecnologia. O que você gostaria de saber ou discutir?',
     webhookUrl = DEFAULT_WEBHOOK_URL,
     features = { voice: true, location: true, files: true, camera: false },
+    voiceAutoSend = false,
+    voiceReplyEnabled = false,
+    voiceName = 'alloy',
   } = config;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -44,53 +52,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
-  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isListening, toggleListening } = useSpeechRecognition();
-
-  // Initialize voices
-  useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const storedVoiceName = localStorage.getItem(VOICE_SETTINGS_KEY);
-      
-      if (storedVoiceName) {
-        const voice = voices.find(v => v.name === storedVoiceName);
-        if (voice) {
-          setSelectedVoice(voice);
-          return;
-        }
-      }
-      
-      // Se não encontrou a voz salva, procura a Francisca
-      const francisca = voices.find(voice => 
-        voice.name.toLowerCase().includes('francisca') && 
-        voice.lang.includes('pt')
-      );
-      
-      if (francisca) {
-        setSelectedVoice(francisca);
-        localStorage.setItem(VOICE_SETTINGS_KEY, francisca.name);
-      } else {
-        // Se não encontrou Francisca, procura qualquer voz em português
-        const ptVoice = voices.find(voice => voice.lang.includes('pt'));
-        if (ptVoice) {
-          setSelectedVoice(ptVoice);
-          localStorage.setItem(VOICE_SETTINGS_KEY, ptVoice.name);
-        }
-      }
-    };
-
-    if ('speechSynthesis' in window) {
-      // Carrega as vozes imediatamente se já estiverem disponíveis
-      loadVoices();
-      
-      // Configura o evento para carregar quando as vozes estiverem disponíveis
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-  }, []);
+  const recorder = useVoiceRecorder();
+  const speech = useSpeech();
+  const voiceSupported = isRecordingSupported();
 
   // Initialize session
   useEffect(() => {
@@ -158,9 +126,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
             timestamp: new Date(),
             type: 'text'          };
           setMessages(prev => [...prev, botMessage]);
-          
-          // Texto será exibido apenas visualmente, sem síntese de voz
-          // A voz virá apenas do áudio base64 do N8N se houver
+
+          if (voiceReplyEnabled) {
+            speech.speak(response.text, voiceName).catch((err) => {
+              toast({ title: 'Erro na voz do bot', description: err.message, variant: 'destructive' });
+            });
+          }
         } else if ('audio' in response) {
           // Adiciona mensagem de áudio com os dados de áudio
           const audioMessage: Message = {
@@ -229,12 +200,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     }
   };
 
-  const sendTextMessage = async () => {
-    if (!inputText.trim()) return;
+  const sendTextMessage = async (override?: string) => {
+    const text = (override ?? inputText).trim();
+    if (!text) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
-      text: inputText,
+      text,
       sender: 'user',
       timestamp: new Date(),
       type: 'text'
@@ -242,13 +214,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
 
     setMessages(prev => [...prev, userMessage]);
     
+    setInputText('');
+
     await handleSendToWebhook({
       type: 'text',
-      content: inputText,
+      content: text,
       metadata: null
     });
-
-    setInputText('');
   };
 
   const shareLocation = () => {
@@ -317,27 +289,63 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     setMessages(prev => [...prev, message]);
   };
 
-  const handleToggleListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+  const startRecording = async () => {
+    if (!voiceSupported) {
       toast({
-        title: "Recurso não suportado",
-        description: "Seu navegador não suporta reconhecimento de voz.",
-        variant: "destructive",
+        title: 'Gravação indisponível',
+        description: 'O navegador não permite acesso ao microfone. É necessário HTTPS e suporte a gravação de áudio.',
+        variant: 'destructive',
       });
       return;
     }
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+    speech.stop();
+    try {
+      await recorder.start();
+    } catch (err: any) {
       toast({
-        title: "Permissão não solicitada",
-        description: "Por segurança, o navegador só permite acesso ao microfone em sites HTTPS ou localhost. Acesse o sistema por HTTPS para liberar a permissão.",
-        variant: "destructive",
+        title: 'Microfone bloqueado',
+        description: err?.name === 'NotAllowedError'
+          ? 'Permissão de microfone negada. Libere o acesso nas configurações do site.'
+          : 'Não foi possível iniciar a gravação.',
+        variant: 'destructive',
       });
-      return;
     }
-    toggleListening((transcript: string) => {
-      setInputText(transcript);
-    });
   };
+
+  const stopRecording = async () => {
+    const blob = await recorder.stop();
+    if (!blob) {
+      toast({ title: 'Gravação vazia', description: 'Nada foi capturado. Tente novamente.', variant: 'destructive' });
+      return;
+    }
+    setIsTranscribing(true);
+    try {
+      const text = await transcribeAudio(blob, 'pt');
+      if (voiceAutoSend) {
+        await sendTextMessage(text);
+      } else {
+        setInputText(text);
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro na transcrição', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const voiceControls = {
+    supported: voiceSupported,
+    isRecording: recorder.isRecording,
+    seconds: recorder.seconds,
+    isTranscribing,
+    onStartRecording: startRecording,
+    onStopRecording: stopRecording,
+    onCancelRecording: () => { recorder.cancel(); },
+    replyEnabled: voiceReplyEnabled,
+    isMuted: speech.isMuted,
+    onToggleMute: speech.toggleMute,
+  };
+
   if (embedded) {
     // Render always-open, fullscreen
     return (
@@ -363,14 +371,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
         <ChatInput
           inputText={inputText}
           setInputText={setInputText}
-          isListening={isListening}
           isLoading={isLoading}
-          onSendMessage={sendTextMessage}
-          onToggleListening={handleToggleListening}
+          onSendMessage={() => sendTextMessage()}
           onShareLocation={shareLocation}
           onAddMessage={addMessage}
           onSendToWebhook={handleSendToWebhook}
           features={features}
+          voice={voiceControls}
         />
       </div>
     );
@@ -449,14 +456,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
       <ChatInput
         inputText={inputText}
         setInputText={setInputText}
-        isListening={isListening}
         isLoading={isLoading}
-        onSendMessage={sendTextMessage}
-        onToggleListening={handleToggleListening}
+        onSendMessage={() => sendTextMessage()}
         onShareLocation={shareLocation}
         onAddMessage={addMessage}
         onSendToWebhook={handleSendToWebhook}
         features={features}
+        voice={voiceControls}
       />
     </div>
   );

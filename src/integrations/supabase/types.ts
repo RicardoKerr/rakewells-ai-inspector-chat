@@ -127,6 +127,9 @@ export type Database = {
           primary_color: string
           system_prompt: string | null
           updated_at: string
+          voice_auto_send: boolean
+          voice_name: string
+          voice_reply_enabled: boolean
           webhook_url: string | null
           welcome_message: string
         }
@@ -144,6 +147,9 @@ export type Database = {
           primary_color?: string
           system_prompt?: string | null
           updated_at?: string
+          voice_auto_send?: boolean
+          voice_name?: string
+          voice_reply_enabled?: boolean
           webhook_url?: string | null
           welcome_message?: string
         }
@@ -161,6 +167,9 @@ export type Database = {
           primary_color?: string
           system_prompt?: string | null
           updated_at?: string
+          voice_auto_send?: boolean
+          voice_name?: string
+          voice_reply_enabled?: boolean
           webhook_url?: string | null
           welcome_message?: string
         }
@@ -172,34 +181,52 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bot_name: string | null
+          created_at: string | null
           features: Json | null
           header_title: string | null
           id: string | null
           is_active: boolean | null
+          knowledge_mode: string | null
           name: string | null
           primary_color: string | null
+          updated_at: string | null
+          voice_auto_send: boolean | null
+          voice_name: string | null
+          voice_reply_enabled: boolean | null
           welcome_message: string | null
         }
         Insert: {
           avatar_url?: string | null
           bot_name?: string | null
+          created_at?: string | null
           features?: Json | null
           header_title?: string | null
           id?: string | null
           is_active?: boolean | null
+          knowledge_mode?: string | null
           name?: string | null
           primary_color?: string | null
+          updated_at?: string | null
+          voice_auto_send?: boolean | null
+          voice_name?: string | null
+          voice_reply_enabled?: boolean | null
           welcome_message?: string | null
         }
         Update: {
           avatar_url?: string | null
           bot_name?: string | null
+          created_at?: string | null
           features?: Json | null
           header_title?: string | null
           id?: string | null
           is_active?: boolean | null
+          knowledge_mode?: string | null
           name?: string | null
           primary_color?: string | null
+          updated_at?: string | null
+          voice_auto_send?: boolean | null
+          voice_name?: string | null
+          voice_reply_enabled?: boolean | null
           welcome_message?: string | null
         }
         Relationships: []
