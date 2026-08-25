@@ -354,9 +354,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} formatTime={formatTime} />
+              <MessageBubble key={m.id} message={m} formatTime={formatTime} avatarUrl={avatarUrl} />
             ))}
-            {isLoading && <LoadingIndicator />}
+            {isLoading && <LoadingIndicator avatarUrl={avatarUrl} />}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
@@ -437,9 +437,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
               key={message.id} 
               message={message} 
               formatTime={formatTime} 
+              avatarUrl={avatarUrl}
             />
           ))}
-          {isLoading && <LoadingIndicator />}
+          {isLoading && <LoadingIndicator avatarUrl={avatarUrl} />}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
