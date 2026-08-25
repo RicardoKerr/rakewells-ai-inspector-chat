@@ -131,7 +131,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
       };
       setMessages(prev => [...prev, waitMessage]);
 
-      const responses = await sendToWebhook(sessionId, messageData, webhookUrl);
+      const responses = await sendToWebhook(sessionId, messageData, webhookUrl, widgetId && widgetId !== 'preview' ? widgetId : undefined);
       console.log('Webhook responses:', responses);
       if (!responses || responses.length === 0) {
         toast({
