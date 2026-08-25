@@ -230,6 +230,30 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     const text = (override ?? inputText).trim();
     if (!text) return;
 
+    if (agentMode) {
+      if (!agent.isConnected) {
+        toast({
+          title: 'Conversa não iniciada',
+          description: 'Clique em "Iniciar conversa" para falar com o agente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        text,
+        sender: 'user',
+        timestamp: new Date(),
+        type: 'text',
+      };
+      setMessages(prev => [...prev, userMessage]);
+      setInputText('');
+      if (!agent.sendText(text)) {
+        toast({ title: 'Falha ao enviar', description: 'A mensagem não pôde ser enviada ao agente.', variant: 'destructive' });
+      }
+      return;
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       text,
@@ -248,6 +272,32 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
       metadata: null
     });
   };
+
+  const AgentBar = () => (
+    <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 bg-gray-50">
+      <span className="text-xs text-gray-600 flex items-center gap-2">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            agent.isConnected ? (agent.isSpeaking ? 'bg-green-500 animate-pulse' : 'bg-green-500') : 'bg-gray-400'
+          }`}
+        />
+        {agent.isConnecting
+          ? 'Conectando ao agente...'
+          : agent.isConnected
+            ? agent.isSpeaking ? 'Agente falando...' : 'Ouvindo você...'
+            : 'Conversa por voz desligada'}
+      </span>
+      {agent.isConnected ? (
+        <Button size="sm" variant="destructive" onClick={agent.stop}>
+          <PhoneOff className="h-4 w-4 mr-2" />Encerrar
+        </Button>
+      ) : (
+        <Button size="sm" onClick={agent.start} disabled={agent.isConnecting}>
+          <Phone className="h-4 w-4 mr-2" />Iniciar conversa
+        </Button>
+      )}
+    </div>
+  );
 
   const shareLocation = () => {
     if (!('geolocation' in navigator)) {
