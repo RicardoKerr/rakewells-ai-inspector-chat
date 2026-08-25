@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Copy } from 'lucide-react';
+import { ArrowLeft, Copy, Upload, Image as ImageIcon } from 'lucide-react';
 import ChatWidget from '@/components/ChatWidget';
 import type { Widget } from '@/types/widget';
 
@@ -35,6 +35,28 @@ export default function WidgetEditor() {
   const [form, setForm] = useState<any>(DEFAULTS);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  async function onAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Arquivo inválido', description: 'Escolha uma imagem.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await resizeToDataUrl(file, 256);
+      set('avatar_url', dataUrl);
+      toast({ title: 'Imagem carregada', description: 'Clique em Salvar para aplicar.' });
+    } catch (err: any) {
+      toast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  }
+
 
   useEffect(() => {
     if (!isNew && user && isAdmin) load();
