@@ -260,6 +260,8 @@ export default function WidgetEditor() {
               voiceAutoSend: form.voice_auto_send,
               voiceReplyEnabled: form.voice_reply_enabled,
               voiceName: form.voice_name,
+              conversationMode: form.conversation_mode,
+              elevenlabsAgentId: form.elevenlabs_agent_id,
             }} />
           </div>
         </div>
