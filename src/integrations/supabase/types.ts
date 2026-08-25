@@ -127,6 +127,9 @@ export type Database = {
           primary_color: string
           system_prompt: string | null
           updated_at: string
+          voice_auto_send: boolean
+          voice_name: string
+          voice_reply_enabled: boolean
           webhook_url: string | null
           welcome_message: string
         }
@@ -144,6 +147,9 @@ export type Database = {
           primary_color?: string
           system_prompt?: string | null
           updated_at?: string
+          voice_auto_send?: boolean
+          voice_name?: string
+          voice_reply_enabled?: boolean
           webhook_url?: string | null
           welcome_message?: string
         }
@@ -161,6 +167,9 @@ export type Database = {
           primary_color?: string
           system_prompt?: string | null
           updated_at?: string
+          voice_auto_send?: boolean
+          voice_name?: string
+          voice_reply_enabled?: boolean
           webhook_url?: string | null
           welcome_message?: string
         }
