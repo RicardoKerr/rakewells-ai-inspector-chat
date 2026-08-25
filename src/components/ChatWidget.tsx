@@ -529,6 +529,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
         </div>
       </ScrollArea>
 
+      {agentMode && <AgentBar />}
+
       {/* Input Area */}
       <ChatInput
         inputText={inputText}
