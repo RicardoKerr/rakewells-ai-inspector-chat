@@ -116,8 +116,10 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bot_name: string
+          conversation_mode: string
           created_at: string
           created_by: string | null
+          elevenlabs_agent_id: string | null
           features: Json
           header_title: string
           id: string
@@ -136,8 +138,10 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bot_name?: string
+          conversation_mode?: string
           created_at?: string
           created_by?: string | null
+          elevenlabs_agent_id?: string | null
           features?: Json
           header_title?: string
           id?: string
@@ -156,8 +160,10 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bot_name?: string
+          conversation_mode?: string
           created_at?: string
           created_by?: string | null
+          elevenlabs_agent_id?: string | null
           features?: Json
           header_title?: string
           id?: string
@@ -181,7 +187,9 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bot_name: string | null
+          conversation_mode: string | null
           created_at: string | null
+          elevenlabs_agent_id: string | null
           features: Json | null
           header_title: string | null
           id: string | null
@@ -198,7 +206,9 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bot_name?: string | null
+          conversation_mode?: string | null
           created_at?: string | null
+          elevenlabs_agent_id?: string | null
           features?: Json | null
           header_title?: string | null
           id?: string | null
@@ -215,7 +225,9 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bot_name?: string | null
+          conversation_mode?: string | null
           created_at?: string | null
+          elevenlabs_agent_id?: string | null
           features?: Json | null
           header_title?: string | null
           id?: string | null
