@@ -1,1 +1,10 @@
 project_id = "qhlgdnpnjrlhycgkaoar"
+
+[functions.widget-chat]
+verify_jwt = false
+
+[functions.widget-transcribe]
+verify_jwt = false
+
+[functions.widget-speak]
+verify_jwt = false
