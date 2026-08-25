@@ -181,12 +181,15 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bot_name: string | null
+          created_at: string | null
           features: Json | null
           header_title: string | null
           id: string | null
           is_active: boolean | null
+          knowledge_mode: string | null
           name: string | null
           primary_color: string | null
+          updated_at: string | null
           voice_auto_send: boolean | null
           voice_name: string | null
           voice_reply_enabled: boolean | null
@@ -195,12 +198,15 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bot_name?: string | null
+          created_at?: string | null
           features?: Json | null
           header_title?: string | null
           id?: string | null
           is_active?: boolean | null
+          knowledge_mode?: string | null
           name?: string | null
           primary_color?: string | null
+          updated_at?: string | null
           voice_auto_send?: boolean | null
           voice_name?: string | null
           voice_reply_enabled?: boolean | null
@@ -209,12 +215,15 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bot_name?: string | null
+          created_at?: string | null
           features?: Json | null
           header_title?: string | null
           id?: string | null
           is_active?: boolean | null
+          knowledge_mode?: string | null
           name?: string | null
           primary_color?: string | null
+          updated_at?: string | null
           voice_auto_send?: boolean | null
           voice_name?: string | null
           voice_reply_enabled?: boolean | null
