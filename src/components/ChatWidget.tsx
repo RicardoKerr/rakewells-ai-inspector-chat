@@ -422,6 +422,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     onToggleMute: speech.toggleMute,
   };
 
+  // No modo agente, o microfone é gerenciado pelo próprio agente (WebRTC).
+  const inputFeatures = agentMode ? { ...features, voice: false } : features;
+
   if (embedded) {
     // Render always-open, fullscreen
     return (
