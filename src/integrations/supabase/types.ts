@@ -187,6 +187,9 @@ export type Database = {
           is_active: boolean | null
           name: string | null
           primary_color: string | null
+          voice_auto_send: boolean | null
+          voice_name: string | null
+          voice_reply_enabled: boolean | null
           welcome_message: string | null
         }
         Insert: {
@@ -198,6 +201,9 @@ export type Database = {
           is_active?: boolean | null
           name?: string | null
           primary_color?: string | null
+          voice_auto_send?: boolean | null
+          voice_name?: string | null
+          voice_reply_enabled?: boolean | null
           welcome_message?: string | null
         }
         Update: {
@@ -209,6 +215,9 @@ export type Database = {
           is_active?: boolean | null
           name?: string | null
           primary_color?: string | null
+          voice_auto_send?: boolean | null
+          voice_name?: string | null
+          voice_reply_enabled?: boolean | null
           welcome_message?: string | null
         }
         Relationships: []
