@@ -26,6 +26,8 @@ export interface ChatWidgetConfig {
   voiceAutoSend?: boolean;
   voiceReplyEnabled?: boolean;
   voiceName?: string;
+  conversationMode?: string;
+  elevenlabsAgentId?: string;
 }
 
 interface ChatWidgetProps {
@@ -45,7 +47,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
     voiceAutoSend = false,
     voiceReplyEnabled = false,
     voiceName = 'alloy',
+    conversationMode = 'webhook',
+    elevenlabsAgentId,
   } = config;
+
+  const agentMode = conversationMode === 'elevenlabs_agent';
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,6 +65,25 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }
   const recorder = useVoiceRecorder();
   const speech = useSpeech();
   const voiceSupported = isRecordingSupported();
+
+  const agent = useElevenLabsAgent({
+    widgetId,
+    onEvent: ({ role, text }) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${role}-${Date.now()}-${Math.random()}`,
+          text,
+          sender: role === 'user' ? 'user' : 'bot',
+          timestamp: new Date(),
+          type: 'text',
+        },
+      ]);
+    },
+    onError: (message) => {
+      toast({ title: 'Agente de voz', description: message, variant: 'destructive' });
+    },
+  });
 
   // Initialize session
   useEffect(() => {
