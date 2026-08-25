@@ -30,6 +30,7 @@ interface ChatWidgetProps {
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ config = {}, embedded = false }) => {
   const {
+    id: widgetId,
     headerTitle = 'Humanito | TV Humana',
     avatarUrl = '/lovable-uploads/87e012d2-0f3a-450f-bcc4-a004440bda96.png',
     primaryColor = '#2563eb',
