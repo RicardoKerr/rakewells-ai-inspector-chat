@@ -45,7 +45,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold mb-2">Humanito Builder</h1>
+        <h1 className="text-2xl font-bold mb-2">Widget Builder</h1>
         <p className="text-sm text-gray-500 mb-6">{mode === 'signin' ? 'Entrar como administrador' : 'Criar conta (primeiro usuário vira admin)'}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
